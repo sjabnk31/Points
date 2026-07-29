@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>學生點數記錄器</title>
+  <style>
+    :root {
+      --bg-color: #f7f7fc;
+      --card-bg: #ffffff;
+      --primary-purple: #b25bd7;
+      --text-dark: #2d264b;
+      --text-sub: #6c757d;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-yellow: #f59e0b;
+      --border-color: #e2e8f0;
+      --border-radius: 16px;
+      --shadow: 0 4px 20px rgba(76, 53, 181, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-dark);
+      padding: 1.5rem 1rem;
+      max-width: 600px; /* 適合卡片精緻呈現的寬度 */
+      margin: 0 auto;
+      overflow-x: hidden; /* 徹底杜絕橫向滾動 */
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      letter-spacing: 1px;
+    }
+
+    /* 班級選擇列 */
+    .class-bar {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 0.6rem 0.8rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 0.8rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .class-select {
+      flex: 1;
+      padding: 0.5rem 0.8rem;
+      border: 1.5px solid var(--primary-purple);
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--primary-purple);
+      background-color: #fcf8ff;
+      outline: none;
+    }
+
+    /* 控制列 (新增學生與刷新) */
+    .controls-bar {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 0.8rem 1rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.2rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .controls-bar input {
+      flex: 1;
+      padding: 0.5rem 0.8rem;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      font-size: 0.9rem;
+      outline: none;
+      min-width: 0; /* 防止 input 擠壓按鈕 */
+    }
+
+    .controls-bar input:focus {
+      border-color: var(--primary-purple);
+    }
+
+    /* 圓角膠囊按鈕 */
+    .btn-pill {
+      padding: 0.4rem 0.8rem;
+      border: 2px solid var(--primary-purple);
+      background: #ffffff;
+      color: var(--primary-purple);
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .btn-pill:hover {
+      background: var(--primary-purple);
+      color: #ffffff;
+    }
+
+    .btn-pill.sm {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.8rem;
+    }
+
+    .divider {
+      height: 2px;
+      background-color: #b25bd7;
+      margin-bottom: 1.2rem;
+      border-radius: 2px;
+      opacity: 0.7;
+    }
+
+    /* 兩欄 Grid 佈局 */
+    .student-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.8rem;
+      width: 100%;
+    }
+
+    /* 薪資表風格卡片 */
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 0.9rem 0.8rem;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border-left: 5px solid var(--primary-purple); /* 紫色側條 */
+      transition: transform 0.15s ease;
+    }
+
+    /* 當點數為負數時，卡片轉換為紅色 warning 風格 */
+    .card.warning {
+      border-left-color: var(--accent-red);
+      background: #fff8f8;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px dashed #e2e8f0;
+      margin-bottom: 0.6rem;
+    }
+
+    .student-name {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--text-dark);
+    }
+
+    .card.warning .student-name {
+      color: var(--accent-red);
+    }
+
+    .card-tools {
+      display: flex;
+      gap: 0.2rem;
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      opacity: 0.4;
+      padding: 0.1rem;
+      transition: opacity 0.2s ease;
+    }
+
+    .icon-btn:hover {
+      opacity: 1;
+    }
+
+    .points-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+    }
+
+    .points-label {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+
+    .points-display {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary-purple);
+    }
+
+    .points-display.negative {
+      color: var(--accent-red);
+    }
+
+    /* 操作區塊 */
+    .quick-actions {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .btn-quick {
+      flex: 1;
+      padding: 0.3rem;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      color: var(--text-dark);
+      cursor: pointer;
+    }
+
+    .btn-quick:hover {
+      background: #edf2f7;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 0.3rem;
+    }
+
+    .point-input {
+      width: 60%;
+      padding: 0.3rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .point-input:focus {
+      border-color: var(--primary-purple);
+    }
+
+    .btn-submit {
+      width: 40%;
+      padding: 0.3rem;
+      background: var(--primary-purple);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .btn-submit:hover {
+      opacity: 0.9;
+    }
+
+    /* 全螢幕遮罩 */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top-color: var(--primary-purple);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 0.8rem;
+    }
+
+    .overlay-text {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 載入遮罩 -->
+  <div class="overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="overlay-text" id="overlayText">資料載入中...</div>
+  </div>
+
+  <header>
+    <h1>點數明細表</h1>
+  </header>
+
+  <!-- 班級選擇列 -->
+  <div class="class-bar">
+    <select class="class-select" id="classSelect" onchange="renderStudents()">
+      <option value="格蘭115夏令營小一">格蘭115夏令營小一</option>
+      <option value="ALL">所有學生</option>
+    </select>
+    <button class="btn-pill sm" onclick="addNewClass()">＋ 班級</button>
+  </div>
+
+  <!-- 操作列 -->
+  <div class="controls-bar">
+    <input type="text" id="newStudentName" placeholder="輸入姓名..." onkeydown="if(event.key==='Enter') addStudent()">
+    <button class="btn-pill" onclick="addStudent()">＋ 新增</button>
+    <button class="btn-pill" onclick="refreshPage()">↻ 刷新</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <main>
+    <div class="student-grid" id="studentGrid">
+      <div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem;">載入中...</div>
+    </div>
+  </main>
+
+  <script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxONXUGA0lKjd_XRdjBn96d2Dh66F4lUka63DPBr9txTTMKRFAYscTtO2hTBzIor3Xv/exec";
+
+    let students = [];
+    let classes = ["格蘭115夏令營小一"];
+    let saveTimer = null;
+    let hasUnsavedChanges = false;
+
+    const grid = document.getElementById('studentGrid');
+    const classSelect = document.getElementById('classSelect');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const overlayText = document.getElementById('overlayText');
+
+    function showOverlay(text = "處理中...") {
+      overlayText.textContent = text;
+      loadingOverlay.classList.add('active');
+    }
+
+    function hideOverlay() {
+      loadingOverlay.classList.remove('active');
+    }
+
+    function scheduleSave() {
+      hasUnsavedChanges = true;
+
+      if (saveTimer) {
+        clearTimeout(saveTimer);
+      }
+
+      saveTimer = setTimeout(() => {
+        saveData();
+      }, 5000);
+    }
+
+    async function loadData() {
+      showOverlay("同步試算表資料中...");
+      try {
+        const res = await fetch(GAS_URL);
+        const data = await res.json();
+        
+        // 支援包含班級與學生資料的結構
+        if (Array.isArray(data)) {
+          students = data;
+        } else {
+          students = data.students || [];
+          if (data.classes && data.classes.length > 0) {
+            classes = data.classes;
+          }
+        }
+        
+        // 確保學生資料有 class 欄位（舊資料預設設為目前選擇的班級）
+        students.forEach(s => {
+          if (!s.className) s.className = "格蘭115夏令營小一";
+        });
+
+        updateClassDropdown();
+        renderStudents();
+        hasUnsavedChanges = false;
+      } catch (err) {
+        console.error(err);
+        alert("資料載入失敗，請檢查網路連線！");
+      } finally {
+        hideOverlay();
+      }
+    }
+
+    async function saveData() {
+      showOverlay("正在上傳資料...");
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'saveAll', students: students, classes: classes })
+        });
+        hasUnsavedChanges = false;
+      } catch (err) {
+        console.error(err);
+        alert("儲存失敗！");
+      } finally {
+        hideOverlay();
+      }
+    }
+
+    function refreshPage() {
+      if (hasUnsavedChanges) {
+        const confirmRefresh = confirm("尚有變更未完成自動同步，確定要刷新頁面嗎？");
+        if (!confirmRefresh) return;
+      }
+      loadData();
+    }
+
+    function updateClassDropdown() {
+      const currentVal = classSelect.value || classes[0];
+      classSelect.innerHTML = '';
+
+      classes.forEach(cls => {
+        const opt = document.createElement('option');
+        opt.value = cls;
+        opt.textContent = cls;
+        classSelect.appendChild(opt);
+      });
+
+      const allOpt = document.createElement('option');
+      allOpt.value = 'ALL';
+      allOpt.textContent = '所有學生';
+      classSelect.appendChild(allOpt);
+
+      if ([...classes, 'ALL'].includes(currentVal)) {
+        classSelect.value = currentVal;
+      } else {
+        classSelect.value = classes[0];
+      }
+    }
+
+    function addNewClass() {
+      const newClassName = prompt("請輸入新班級名稱：");
+      if (newClassName && newClassName.trim() !== "") {
+        const name = newClassName.trim();
+        if (!classes.includes(name)) {
+          classes.push(name);
+          updateClassDropdown();
+          classSelect.value = name;
+          renderStudents();
+          scheduleSave();
+        } else {
+          alert("該班級名稱已存在！");
+        }
+      }
+    }
+
+    function renderStudents() {
+      grid.innerHTML = '';
+      const selectedClass = classSelect.value;
+
+      // 依選取的班級過濾學生
+      const filteredStudents = selectedClass === 'ALL' 
+        ? students 
+        : students.filter(s => s.className === selectedClass);
+
+      if (filteredStudents.length === 0) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem;">此班級目前沒有學生，請在上方新增學生</div>`;
+        return;
+      }
+
+      filteredStudents.forEach(student => {
+        const isNegative = student.points < 0;
+        const card = document.createElement('div');
+        card.className = `card ${isNegative ? 'warning' : ''}`;
+        
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="student-name">${escapeHtml(student.name)}</div>
+            <div class="card-tools">
+              <button class="icon-btn" title="修改" onclick="editName('${student.id}')">✏️</button>
+              <button class="icon-btn" title="刪除" onclick="deleteStudent('${student.id}')">🗑️</button>
+            </div>
+          </div>
+
+          <div class="points-row">
+            <span class="points-label">當前點數：</span>
+            <span class="points-display ${isNegative ? 'negative' : ''}" id="points-${student.id}">${student.points}</span>
+          </div>
+          
+          <div class="quick-actions">
+            <button class="btn-quick" onclick="adjustPoints('${student.id}', -100)">-100</button>
+            <button class="btn-quick" onclick="adjustPoints('${student.id}', 100)">+100</button>
+          </div>
+
+          <div class="input-group">
+            <input 
+              type="number" 
+              class="point-input" 
+              id="input-${student.id}" 
+              placeholder="±數字"
+              onkeydown="handleKeyDown(event, '${student.id}')"
+            >
+            <button class="btn-submit" onclick="submitInput('${student.id}')">送出</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function addStudent() {
+      const input = document.getElementById('newStudentName');
+      const name = input.value.trim();
+
+      if (!name) return;
+
+      let currentClass = classSelect.value;
+      if (currentClass === 'ALL') {
+        currentClass = classes[0]; // 如果在「所有學生」模式下新增，預設放入第一個班級
+      }
+
+      const newStudent = {
+        id: Date.now().toString(),
+        name: name,
+        points: 0,
+        className: currentClass
+      };
+
+      students.push(newStudent);
+      renderStudents();
+      scheduleSave();
+      input.value = '';
+    }
+
+    function editName(id) {
+      const student = students.find(s => s.id === id);
+      if (!student) return;
+
+      const newName = prompt("請輸入新的姓名：", student.name);
+      if (newName !== null && newName.trim() !== "") {
+        student.name = newName.trim();
+        renderStudents();
+        scheduleSave();
+      }
+    }
+
+    function deleteStudent(id) {
+      const student = students.find(s => s.id === id);
+      if (!student) return;
+
+      if (confirm(`確定要刪除「${student.name}」嗎？`)) {
+        students = students.filter(s => s.id !== id);
+        renderStudents();
+        scheduleSave();
+      }
+    }
+
+    function adjustPoints(id, delta) {
+      const student = students.find(s => s.id === id);
+      if (student) {
+        student.points += delta;
+        renderStudents();
+        scheduleSave();
+      }
+    }
+
+    function handleKeyDown(event, id) {
+      if (event.key === 'Enter') {
+        submitInput(id);
+      }
+    }
+
+    function submitInput(id) {
+      const inputEl = document.getElementById(`input-${id}`);
+      const val = parseInt(inputEl.value, 10);
+
+      if (!isNaN(val)) {
+        adjustPoints(id, val);
+        inputEl.value = '';
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[m];
+      });
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    loadData();
+  </script>
+</body>
+</html>
